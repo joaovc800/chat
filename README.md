@@ -1,9 +1,9 @@
 # Chat Websocket
 
-<img width="200px" src="https://upload.wikimedia.org/wikipedia/commons/d/d9/Node.js_logo.svg">
-<img width="200px" src="https://upload.wikimedia.org/wikipedia/commons/4/4c/Typescript_logo_2020.svg">
-<img width="200px" src="https://upload.wikimedia.org/wikipedia/commons/9/96/Socket-io.svg">
-<img width="200px" src="https://upload.wikimedia.org/wikipedia/commons/6/64/Expressjs.png">
+<code><img width="200px" src="https://upload.wikimedia.org/wikipedia/commons/d/d9/Node.js_logo.svg"></code>
+<code><img width="200px" src="https://upload.wikimedia.org/wikipedia/commons/4/4c/Typescript_logo_2020.svg"></code>
+<code><img width="200px" src="https://upload.wikimedia.org/wikipedia/commons/9/96/Socket-io.svg"></code>
+<code><img width="200px" src="https://upload.wikimedia.org/wikipedia/commons/6/64/Expressjs.png"></code>
 
 
 ## Description
