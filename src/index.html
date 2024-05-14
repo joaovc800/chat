@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en" class="is-fullheight">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebSocket</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bulma@1.0.0/css/bulma.min.css"
+    />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        ::-webkit-scrollbar{
+            width: 3px;
+            height: auto;
+            background-color: #aaa; /* ou que isso seja adicionado ao "caminho" da barra */
+        }
+
+        ::-webkit-scrollbar-thumb{
+            background-color: var(--bulma-primary-base)
+        }
+
+        .messages-container{
+            overflow-y: auto;
+            max-height: 52vh;
+            min-height: 52vh;
+        }
+
+        /* .is-fullheight{
+            height: 100% !important;
+        } */
+
+        [cursor=pointer]{
+            cursor: pointer;
+        }
+    </style>
+  </head>
+  <body class="is-fullheight is-display-flex">
+    <div class="container pt-6 is-fullheight">
+        <div class="messages-container is-fullheight" id="messages"></div>
+
+        <div class="field pt-6">
+
+            <div class="reply-message" has-content="false"></div>
+            <label cursor="pointer" for="typing-message" class="label">Typing Message</label>
+            <div class="control">
+                <textarea
+                    id="typing-message"
+                    class="textarea"
+                    placeholder="Message"
+                ></textarea>
+            </div>
+        </div>
+        <div class="field is-grouped is-grouped-right">
+            <p class="control">
+            <button id="btn-send" class="button is-primary">Send message</button>
+            </p>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+
+        const getName = () => {
+
+            const name = prompt('Digite seu nome')
+            if(name == ''){
+                getName()
+            }else{
+                return name
+            }
+        }
+
+        var name = getName()
+
+        function createDomElement(string){
+            const parser = new DOMParser()
+            const html = parser.parseFromString(string, 'text/html').body.firstChild
+            return html
+        }
+
+        function createMessage({msg, id}){
+
+            const currentDate = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric' };
+            const dateFormatted = currentDate.toLocaleDateString('pt-BR', options);
+
+            const hash = Date.now()
+
+            const inputMessageValue = createDomElement(msg);
+            inputMessageValue.setAttribute('id-hash', hash)
+            inputMessageValue.setAttribute('name', id)
+
+            const template = `
+                <article class="message">
+                    <div class="message-body is-display-flex is-flex-direction-column">
+                        <span class="mb-2 has-text-right">
+                            <span class="tag is-primary">${id}</span>
+                            ${dateFormatted}
+                            <i cursor="pointer" reply="${hash}" class="btn-reply fas fa-reply"></i>
+                        </span>
+                    </div>
+                </article>
+            `
+            const created = createDomElement(template)
+            created.querySelector('.message-body').appendChild(inputMessageValue)
+            return created
+        }
+
+        const socket = io();
+
+        const message = document.getElementById("messages");
+
+        const inputMessages = document.getElementById("typing-message");
+
+        const buttonSend = document.getElementById('btn-send')
+
+        buttonSend.addEventListener("click", () => {
+        
+            if (inputMessages.value) {
+
+                const divReplyMessage = document.querySelector('.reply-message')
+                
+                const hasContent = divReplyMessage.getAttribute('has-content')
+
+                var msg = `<div>`
+
+                if(hasContent === 'true'){
+                    divReplyMessage.querySelector('.delete-reply').remove()
+                    msg += `<div class="respond-people">${divReplyMessage.innerHTML}</div>`
+                }
+
+                msg += `<p class="input-message-value">${inputMessages.value}</p></div>`
+
+                const params = {
+                    msg: msg,
+                    id: name
+                }
+
+                socket.emit("message", params);
+                inputMessages.value = "";
+
+                divReplyMessage.innerHTML = ''
+                divReplyMessage.setAttribute('has-content', 'false')
+
+                socket.emit("newNotification", params)
+
+                var scrollDivBottom = document.querySelector(".messages-container");
+                scrollDivBottom.scroll({top: scrollDivBottom.scrollHeight})
+            }
+
+        });
+
+        socket.on("message", msg => message.appendChild(createMessage(msg)));
+
+        socket.on("newNotification", async notification => {
+            const Toast = Swal.mixin({
+            toast: true,
+            position: "top-end",
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.onmouseenter = Swal.stopTimer;
+                toast.onmouseleave = Swal.resumeTimer;
+            }
+            });
+            Toast.fire({
+                icon: "success",
+                title: `Uma nova mensagem de ${notification.id}`
+            });
+
+            var scrollDivBottom = document.querySelector(".messages-container");
+            scrollDivBottom.scroll({top: scrollDivBottom.scrollHeight})
+
+            const permission = await Notification.requestPermission()
+            
+            if (permission === "granted"){
+                new Notification(`Uma nova mensagem de ${notification.id}`)
+            }
+
+        });
+
+        document.addEventListener('click', function({target}){
+            if(target.classList.contains('btn-reply')){
+
+                const replyId = target.getAttribute('reply')
+                
+                const divMessage = document.querySelector(`[id-hash="${replyId}"]`)
+                
+                const name = divMessage.getAttribute('name')
+
+                const inputMessageValue = divMessage.querySelector('.input-message-value')
+
+                const respondDiv = `
+                    Respondendo à : <span class="tag is-primary">${name}</span>
+                    <div class="my-3 notification is-secondary">
+                        <button class="delete delete-reply"></button>
+                        ${inputMessageValue.innerText}
+                    </div>
+                `
+
+                const divReplyMessage = document.querySelector('.reply-message')
+                divReplyMessage.innerHTML = respondDiv
+                divReplyMessage.setAttribute('has-content', 'true')
+            }
+
+            if(target.classList.contains('delete-reply')){
+                const reply = target.closest('.reply-message')
+                reply.setAttribute('has-content', 'false')
+                reply.innerHTML = ''
+            }
+        })
+
+    </script>
+  </body>
+</html>
